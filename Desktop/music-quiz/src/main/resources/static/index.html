@@ -1,0 +1,926 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Music Quiz — Анализ жанра</title>
+  <style>
+    /* ── Reset & Variables ─────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:          #0d0d14;
+      --surface:     #13131c;
+      --card:        #1a1a28;
+      --card-hover:  #1f1f30;
+      --border:      #2a2a3d;
+      --accent:      #7c3aed;
+      --accent-dim:  rgba(124, 58, 237, 0.15);
+      --accent-glow: rgba(124, 58, 237, 0.4);
+      --cyan:        #22d3ee;
+      --text:        #e2e8f0;
+      --muted:       #64748b;
+      --subtle:      #94a3b8;
+      --success:     #10b981;
+      --danger:      #ef4444;
+      --radius:      14px;
+      --radius-sm:   8px;
+      --transition:  0.2s ease;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      line-height: 1.6;
+    }
+
+    /* ── Layout ────────────────────────────────────────────────── */
+    .page {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 0 20px 60px;
+    }
+
+    /* ── Header ────────────────────────────────────────────────── */
+    header {
+      padding: 36px 0 32px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 40px;
+    }
+
+    .logo {
+      width: 44px; height: 44px;
+      background: linear-gradient(135deg, var(--accent), var(--cyan));
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px;
+      flex-shrink: 0;
+    }
+
+    header h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, #fff 40%, var(--cyan));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    header p {
+      color: var(--muted);
+      font-size: 0.875rem;
+      margin-top: 1px;
+    }
+
+    /* ── Cards ─────────────────────────────────────────────────── */
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 28px;
+    }
+
+    .section-title {
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      margin-bottom: 16px;
+    }
+
+    /* ── Drop Zone ─────────────────────────────────────────────── */
+    #drop-zone {
+      border: 2px dashed var(--border);
+      border-radius: var(--radius);
+      padding: 48px 24px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color var(--transition), background var(--transition);
+      position: relative;
+    }
+
+    #drop-zone:hover,
+    #drop-zone.dragover {
+      border-color: var(--accent);
+      background: var(--accent-dim);
+    }
+
+    #drop-zone.dragover { transform: scale(1.01); }
+
+    #drop-zone input[type="file"] {
+      position: absolute; inset: 0;
+      opacity: 0; cursor: pointer;
+      width: 100%; height: 100%;
+    }
+
+    .drop-icon {
+      font-size: 2.5rem;
+      margin-bottom: 12px;
+      display: block;
+      filter: grayscale(0.3);
+    }
+
+    .drop-title {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+
+    .drop-sub {
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+
+    .drop-sub span {
+      color: var(--accent);
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+
+    /* ── Upload Form ───────────────────────────────────────────── */
+    #upload-form {
+      margin-top: 20px;
+      display: none;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    #upload-form.visible { display: flex; }
+
+    .file-badge {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--accent-dim);
+      border: 1px solid var(--accent);
+      border-radius: var(--radius-sm);
+      padding: 10px 14px;
+      font-size: 0.875rem;
+      color: var(--text);
+    }
+
+    .file-badge .icon { font-size: 1.2rem; }
+
+    .file-badge .name {
+      font-weight: 500;
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .file-badge .size { color: var(--muted); font-size: 0.75rem; }
+
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    @media (max-width: 540px) { .form-row { grid-template-columns: 1fr; } }
+
+    .field { display: flex; flex-direction: column; gap: 6px; }
+
+    .field label {
+      font-size: 0.75rem;
+      font-weight: 500;
+      color: var(--subtle);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .field input {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text);
+      font-size: 0.9rem;
+      padding: 10px 14px;
+      outline: none;
+      transition: border-color var(--transition), box-shadow var(--transition);
+    }
+
+    .field input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-dim);
+    }
+
+    .field input::placeholder { color: var(--muted); }
+
+    /* ── Buttons ───────────────────────────────────────────────── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 11px 22px;
+      border-radius: var(--radius-sm);
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: opacity var(--transition), transform var(--transition), box-shadow var(--transition);
+      white-space: nowrap;
+    }
+
+    .btn:active { transform: scale(0.97); }
+    .btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent), #6d28d9);
+      color: #fff;
+      box-shadow: 0 0 20px var(--accent-glow);
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      box-shadow: 0 0 28px var(--accent-glow);
+      opacity: 0.92;
+    }
+
+    .btn-cyan {
+      background: linear-gradient(135deg, #0891b2, var(--cyan));
+      color: #0d0d14;
+    }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--muted);
+      border: 1px solid var(--border);
+    }
+
+    .btn-ghost:hover:not(:disabled) { background: var(--card-hover); color: var(--text); }
+
+    .btn-danger-ghost {
+      background: transparent;
+      color: var(--muted);
+      border: none;
+      padding: 6px 10px;
+      font-size: 0.8rem;
+    }
+
+    .btn-danger-ghost:hover { color: var(--danger); }
+
+    /* ── Result Card ───────────────────────────────────────────── */
+    #result-section { display: none; margin-top: 24px; }
+    #result-section.visible { display: block; }
+
+    .result-card {
+      background: linear-gradient(135deg, var(--card) 0%, rgba(124,58,237,0.07) 100%);
+      border: 1px solid var(--accent);
+      border-radius: var(--radius);
+      padding: 24px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .result-card::before {
+      content: '';
+      position: absolute;
+      top: -40px; right: -40px;
+      width: 120px; height: 120px;
+      background: radial-gradient(circle, var(--accent-glow), transparent 70%);
+      pointer-events: none;
+    }
+
+    .result-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .result-song-name {
+      font-size: 1.15rem;
+      font-weight: 700;
+    }
+
+    .result-artist {
+      color: var(--muted);
+      font-size: 0.85rem;
+      margin-top: 3px;
+    }
+
+    .result-actions {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-shrink: 0;
+    }
+
+    /* ── Genre Badge ───────────────────────────────────────────── */
+    .genre-area { margin-top: 20px; }
+
+    .genre-label {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+
+    .genre-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 18px;
+      border-radius: 999px;
+      font-size: 1rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      animation: pop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    @keyframes pop {
+      from { opacity: 0; transform: scale(0.7); }
+      to   { opacity: 1; transform: scale(1); }
+    }
+
+    .genre-Rock      { background: rgba(239,68,68,0.15);  color: #f87171; border: 1px solid rgba(239,68,68,0.4); }
+    .genre-Pop       { background: rgba(236,72,153,0.15); color: #f472b6; border: 1px solid rgba(236,72,153,0.4); }
+    .genre-Jazz      { background: rgba(245,158,11,0.15); color: #fbbf24; border: 1px solid rgba(245,158,11,0.4); }
+    .genre-Classical { background: rgba(139,92,246,0.15); color: #a78bfa; border: 1px solid rgba(139,92,246,0.4); }
+    .genre-Hip-Hop   { background: rgba(16,185,129,0.15); color: #34d399; border: 1px solid rgba(16,185,129,0.4); }
+
+    .analyzing-spinner {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--muted);
+      font-size: 0.875rem;
+    }
+
+    .spinner {
+      width: 16px; height: 16px;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── History ───────────────────────────────────────────────── */
+    #history-section { margin-top: 48px; }
+
+    .history-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+
+    .history-count {
+      font-size: 0.75rem;
+      background: var(--accent-dim);
+      color: var(--accent);
+      border: 1px solid rgba(124,58,237,0.3);
+      border-radius: 999px;
+      padding: 2px 10px;
+      font-weight: 600;
+    }
+
+    .track-list { display: flex; flex-direction: column; gap: 10px; }
+
+    .track-item {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      transition: background var(--transition), border-color var(--transition);
+      animation: slideIn 0.25s ease;
+    }
+
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(-8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .track-item:hover { background: var(--card-hover); border-color: #3a3a52; }
+
+    .track-num {
+      font-size: 0.75rem;
+      color: var(--muted);
+      width: 22px;
+      text-align: center;
+      flex-shrink: 0;
+    }
+
+    .track-play {
+      width: 34px; height: 34px;
+      border-radius: 50%;
+      background: var(--accent-dim);
+      border: 1px solid rgba(124,58,237,0.3);
+      color: var(--accent);
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      font-size: 0.75rem;
+      flex-shrink: 0;
+      transition: background var(--transition);
+    }
+
+    .track-play:hover { background: rgba(124,58,237,0.25); }
+    .track-play.playing { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+    .track-info { flex: 1; min-width: 0; }
+
+    .track-title {
+      font-weight: 600;
+      font-size: 0.9rem;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .track-meta {
+      font-size: 0.75rem;
+      color: var(--muted);
+      margin-top: 2px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .track-genre {
+      font-size: 0.7rem;
+      font-weight: 600;
+      padding: 3px 10px;
+      border-radius: 999px;
+      flex-shrink: 0;
+    }
+
+    .track-actions { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
+
+    .empty-history {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--muted);
+      font-size: 0.875rem;
+    }
+
+    .empty-history .icon { font-size: 2rem; display: block; margin-bottom: 10px; opacity: 0.4; }
+
+    /* ── Toast ─────────────────────────────────────────────────── */
+    #toast {
+      position: fixed;
+      bottom: 28px; left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 12px 20px;
+      font-size: 0.875rem;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+      z-index: 999;
+      transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s ease;
+      opacity: 0;
+      white-space: nowrap;
+    }
+
+    #toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+    #toast.success { border-color: var(--success); color: #34d399; }
+    #toast.error   { border-color: var(--danger);  color: #f87171; }
+
+    /* ── Audio player (hidden) ─────────────────────────────────── */
+    audio { display: none; }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <header>
+    <div class="logo">🎵</div>
+    <div>
+      <h1>Music Quiz</h1>
+      <p>Загрузи трек — узнай жанр</p>
+    </div>
+  </header>
+
+  <!-- ── Upload ── -->
+  <div class="card">
+    <div class="section-title">Загрузка трека</div>
+
+    <div id="drop-zone">
+      <input type="file" id="file-input" accept="audio/*" />
+      <span class="drop-icon">🎧</span>
+      <div class="drop-title">Перетащи аудиофайл сюда</div>
+      <div class="drop-sub">или <span>нажми для выбора файла</span></div>
+    </div>
+
+    <form id="upload-form">
+      <div class="file-badge">
+        <span class="icon">🎵</span>
+        <span class="name" id="file-name">—</span>
+        <span class="size" id="file-size"></span>
+      </div>
+
+      <div class="form-row">
+        <div class="field">
+          <label for="input-title">Название</label>
+          <input id="input-title" type="text" placeholder="Bohemian Rhapsody" required />
+        </div>
+        <div class="field">
+          <label for="input-artist">Исполнитель</label>
+          <input id="input-artist" type="text" placeholder="Queen" required />
+        </div>
+      </div>
+
+      <div style="display:flex; gap:10px; justify-content:flex-end;">
+        <button type="button" class="btn btn-ghost" id="btn-reset">Отмена</button>
+        <button type="submit" class="btn btn-primary" id="btn-upload">
+          <span>⬆</span> Загрузить
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <!-- ── Result ── -->
+  <div id="result-section">
+    <div class="result-card">
+      <div class="result-top">
+        <div>
+          <div class="result-song-name" id="result-title">—</div>
+          <div class="result-artist" id="result-artist">—</div>
+        </div>
+        <div class="result-actions">
+          <button class="btn btn-cyan" id="btn-analyze">
+            🔍 Определить жанр
+          </button>
+        </div>
+      </div>
+
+      <div class="genre-area" id="genre-area" style="display:none;">
+        <div class="genre-label">Определённый жанр</div>
+        <div id="genre-result"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── History ── -->
+  <div id="history-section">
+    <div class="history-header">
+      <div class="section-title" style="margin:0;">История треков</div>
+      <span class="history-count" id="history-count">0</span>
+    </div>
+    <div class="track-list" id="track-list">
+      <div class="empty-history">
+        <span class="icon">📭</span>
+        Загруженных треков пока нет
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div id="toast"></div>
+<audio id="audio-player"></audio>
+
+<script>
+  const API = 'http://localhost:8080/api';
+
+  /* ── State ──────────────────────────────────────────────────── */
+  let selectedFile = null;
+  let uploadedSong = null;   // последний загруженный (для результата)
+  let playingId    = null;
+
+  const genreEmoji = {
+    'Rock': '🎸', 'Pop': '🎤', 'Jazz': '🎷',
+    'Classical': '🎻', 'Hip-Hop': '🎤'
+  };
+
+  /* ── Elements ───────────────────────────────────────────────── */
+  const dropZone      = document.getElementById('drop-zone');
+  const fileInput     = document.getElementById('file-input');
+  const uploadForm    = document.getElementById('upload-form');
+  const fileNameEl    = document.getElementById('file-name');
+  const fileSizeEl    = document.getElementById('file-size');
+  const inputTitle    = document.getElementById('input-title');
+  const inputArtist   = document.getElementById('input-artist');
+  const btnReset      = document.getElementById('btn-reset');
+  const btnUpload     = document.getElementById('btn-upload');
+  const resultSection = document.getElementById('result-section');
+  const resultTitle   = document.getElementById('result-title');
+  const resultArtist  = document.getElementById('result-artist');
+  const btnAnalyze    = document.getElementById('btn-analyze');
+  const genreArea     = document.getElementById('genre-area');
+  const genreResult   = document.getElementById('genre-result');
+  const trackList     = document.getElementById('track-list');
+  const historyCount  = document.getElementById('history-count');
+  const audioPlayer   = document.getElementById('audio-player');
+
+  /* ── Toast ──────────────────────────────────────────────────── */
+  function toast(msg, type = 'success') {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.className = `show ${type}`;
+    clearTimeout(el._t);
+    el._t = setTimeout(() => { el.className = ''; }, 3000);
+  }
+
+  /* ── Format bytes ───────────────────────────────────────────── */
+  function fmtSize(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / 1048576).toFixed(1) + ' MB';
+  }
+
+  /* ── Drag & Drop ────────────────────────────────────────────── */
+  ['dragenter','dragover'].forEach(ev =>
+    dropZone.addEventListener(ev, e => {
+      e.preventDefault();
+      dropZone.classList.add('dragover');
+    })
+  );
+
+  ['dragleave','drop'].forEach(ev =>
+    dropZone.addEventListener(ev, e => {
+      e.preventDefault();
+      dropZone.classList.remove('dragover');
+    })
+  );
+
+  dropZone.addEventListener('drop', e => {
+    const file = e.dataTransfer.files[0];
+    if (file) setFile(file);
+  });
+
+  fileInput.addEventListener('change', () => {
+    if (fileInput.files[0]) setFile(fileInput.files[0]);
+  });
+
+  function setFile(file) {
+    if (!file.type.startsWith('audio/')) {
+      toast('Допустимы только аудиофайлы (audio/*)', 'error');
+      return;
+    }
+    selectedFile = file;
+    fileNameEl.textContent = file.name;
+    fileSizeEl.textContent = fmtSize(file.size);
+
+    // Предзаполняем название из имени файла
+    const nameWithoutExt = file.name.replace(/\.[^.]+$/, '');
+    if (!inputTitle.value) inputTitle.value = nameWithoutExt;
+
+    uploadForm.classList.add('visible');
+    inputTitle.focus();
+  }
+
+  /* ── Reset form ─────────────────────────────────────────────── */
+  function resetUpload() {
+    selectedFile = null;
+    fileInput.value = '';
+    inputTitle.value = '';
+    inputArtist.value = '';
+    uploadForm.classList.remove('visible');
+    resultSection.classList.remove('visible');
+    genreArea.style.display = 'none';
+    genreResult.innerHTML = '';
+    btnAnalyze.disabled = false;
+    btnAnalyze.innerHTML = '🔍 Определить жанр';
+  }
+
+  btnReset.addEventListener('click', resetUpload);
+
+  /* ── Upload ─────────────────────────────────────────────────── */
+  uploadForm.addEventListener('submit', async e => {
+    e.preventDefault();
+    if (!selectedFile) return;
+
+    const title  = inputTitle.value.trim();
+    const artist = inputArtist.value.trim();
+    if (!title || !artist) {
+      toast('Заполни название и исполнителя', 'error');
+      return;
+    }
+
+    btnUpload.disabled = true;
+    btnUpload.innerHTML = '<span class="spinner"></span> Загрузка…';
+
+    try {
+      const fd = new FormData();
+      fd.append('file',   selectedFile);
+      fd.append('title',  title);
+      fd.append('artist', artist);
+
+      const res = await fetch(`${API}/songs/upload`, { method: 'POST', body: fd });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || `HTTP ${res.status}`);
+      }
+
+      uploadedSong = await res.json();
+      showResult(uploadedSong);
+      toast('Трек успешно загружен ✓');
+      await loadHistory();
+      resetUploadState();
+    } catch (err) {
+      toast('Ошибка загрузки: ' + err.message, 'error');
+    } finally {
+      btnUpload.disabled = false;
+      btnUpload.innerHTML = '<span>⬆</span> Загрузить';
+    }
+  });
+
+  function resetUploadState() {
+    selectedFile = null;
+    fileInput.value = '';
+    inputTitle.value = '';
+    inputArtist.value = '';
+    uploadForm.classList.remove('visible');
+  }
+
+  /* ── Show result ─────────────────────────────────────────────── */
+  function showResult(song) {
+    resultTitle.textContent  = song.title;
+    resultArtist.textContent = song.artist + (song.genre ? ` · ${song.genre}` : '');
+    genreArea.style.display  = 'none';
+    genreResult.innerHTML    = '';
+    btnAnalyze.disabled      = false;
+    btnAnalyze.innerHTML     = '🔍 Определить жанр';
+    resultSection.classList.add('visible');
+
+    // Если жанр уже известен — показываем сразу
+    if (song.genre) showGenreBadge(song.genre);
+  }
+
+  /* ── Analyze genre ───────────────────────────────────────────── */
+  btnAnalyze.addEventListener('click', async () => {
+    if (!uploadedSong) return;
+    await doAnalyze(uploadedSong.id, btnAnalyze, genreArea, genreResult);
+    // Обновляем подзаголовок и историю
+    await loadHistory();
+  });
+
+  async function doAnalyze(songId, btnEl, areaEl, resultEl) {
+    btnEl.disabled = true;
+    btnEl.innerHTML = '<span class="spinner"></span> Анализ…';
+
+    try {
+      const res = await fetch(`${API}/songs/${songId}/analyze`, { method: 'POST' });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const song = await res.json();
+
+      if (uploadedSong && uploadedSong.id === songId) {
+        uploadedSong = song;
+        resultArtist.textContent = song.artist + (song.genre ? ` · ${song.genre}` : '');
+      }
+
+      showGenreBadge(song.genre, resultEl, areaEl);
+      btnEl.innerHTML = '✓ Определено';
+      toast(`Жанр: ${song.genre}`);
+    } catch (err) {
+      toast('Ошибка анализа: ' + err.message, 'error');
+      btnEl.disabled = false;
+      btnEl.innerHTML = '🔍 Определить жанр';
+    }
+  }
+
+  function showGenreBadge(genre, containerEl = genreResult, areaEl = genreArea) {
+    const safeClass = genre.replace(/[^a-zA-Z0-9-]/g, '-');
+    const emoji = genreEmoji[genre] || '🎵';
+    containerEl.innerHTML =
+      `<span class="genre-badge genre-${safeClass}">${emoji} ${genre}</span>`;
+    areaEl.style.display = 'block';
+  }
+
+  /* ── History ─────────────────────────────────────────────────── */
+  async function loadHistory() {
+    try {
+      const res = await fetch(`${API}/songs`);
+      if (!res.ok) return;
+      const songs = await res.json();
+      renderHistory(songs);
+    } catch {
+      // сервер недоступен — не падаем
+    }
+  }
+
+  function renderHistory(songs) {
+    historyCount.textContent = songs.length;
+
+    if (songs.length === 0) {
+      trackList.innerHTML = `
+        <div class="empty-history">
+          <span class="icon">📭</span>Загруженных треков пока нет
+        </div>`;
+      return;
+    }
+
+    trackList.innerHTML = songs.map((s, i) => {
+      const genreHtml = s.genre
+        ? `<span class="track-genre genre-${s.genre.replace(/[^a-zA-Z0-9-]/g,'-')}">${genreEmoji[s.genre] || ''} ${s.genre}</span>`
+        : `<button class="btn btn-ghost" style="padding:4px 10px;font-size:0.75rem;"
+             onclick="analyzeFromHistory(${s.id}, this)">🔍 Жанр</button>`;
+
+      return `
+        <div class="track-item" id="track-${s.id}">
+          <span class="track-num">${songs.length - i}</span>
+          <button class="track-play" id="play-${s.id}"
+                  onclick="togglePlay(${s.id})" title="Воспроизвести">▶</button>
+          <div class="track-info">
+            <div class="track-title">${esc(s.title)}</div>
+            <div class="track-meta">${esc(s.artist)}${s.genre ? ' · ' + s.genre : ''} · ${s.fileName}</div>
+          </div>
+          ${genreHtml}
+          <div class="track-actions">
+            <button class="btn btn-danger-ghost" onclick="deleteSong(${s.id})" title="Удалить">✕</button>
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  /* ── Analyze from history ────────────────────────────────────── */
+  window.analyzeFromHistory = async function(songId, btn) {
+    const row     = document.getElementById(`track-${songId}`);
+    const areaEl  = document.createElement('div');  // dummy — we update inline
+    const resultEl = document.createElement('div');
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>';
+
+    try {
+      const res = await fetch(`${API}/songs/${songId}/analyze`, { method: 'POST' });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const song = await res.json();
+      toast(`Жанр: ${song.genre}`);
+      await loadHistory(); // перерисовываем историю
+    } catch (err) {
+      toast('Ошибка: ' + err.message, 'error');
+      btn.disabled = false;
+      btn.innerHTML = '🔍 Жанр';
+    }
+  };
+
+  /* ── Audio player ────────────────────────────────────────────── */
+  window.togglePlay = function(songId) {
+    const btn = document.getElementById(`play-${songId}`);
+
+    if (playingId === songId) {
+      audioPlayer.pause();
+      audioPlayer.src = '';
+      markPlaying(playingId, false);
+      playingId = null;
+      return;
+    }
+
+    if (playingId) markPlaying(playingId, false);
+
+    playingId = songId;
+    audioPlayer.src = `${API}/songs/${songId}/audio`;
+    audioPlayer.play().catch(() => toast('Не удалось воспроизвести файл', 'error'));
+    markPlaying(songId, true);
+  };
+
+  audioPlayer.addEventListener('ended', () => {
+    if (playingId) markPlaying(playingId, false);
+    playingId = null;
+  });
+
+  function markPlaying(id, playing) {
+    const btn = document.getElementById(`play-${id}`);
+    if (!btn) return;
+    btn.classList.toggle('playing', playing);
+    btn.textContent = playing ? '■' : '▶';
+  }
+
+  /* ── Delete ──────────────────────────────────────────────────── */
+  window.deleteSong = async function(songId) {
+    if (!confirm('Удалить этот трек?')) return;
+
+    if (playingId === songId) {
+      audioPlayer.pause();
+      playingId = null;
+    }
+
+    try {
+      const res = await fetch(`${API}/songs/${songId}`, { method: 'DELETE' });
+      if (!res.ok && res.status !== 204) throw new Error(`HTTP ${res.status}`);
+      toast('Трек удалён');
+      if (uploadedSong?.id === songId) {
+        resultSection.classList.remove('visible');
+        uploadedSong = null;
+      }
+      await loadHistory();
+    } catch (err) {
+      toast('Ошибка удаления: ' + err.message, 'error');
+    }
+  };
+
+  /* ── Escape HTML ─────────────────────────────────────────────── */
+  function esc(str) {
+    return String(str)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  /* ── Init ────────────────────────────────────────────────────── */
+  loadHistory();
+</script>
+</body>
+</html>

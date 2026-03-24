@@ -1,0 +1,19 @@
+# Claude Code worktrees
+.claude/worktrees/
+
+# Maven
+target/
+*.jar
+*.war
+
+# IntelliJ IDEA
+.idea/
+*.iml
+
+# Application data
+data/
+uploads/
+
+# OS
+.DS_Store
+Thumbs.db
